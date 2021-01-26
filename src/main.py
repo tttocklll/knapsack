@@ -48,7 +48,7 @@ class MDSFLA:
             # evaluate the fitness of the frog
             self.frogs = np.append(self.frogs, Frog(self.dimension, self.weight, self.value, self.capacity))
 
-    def local_search(self):
+    def local_search(self, memeplexes):
         return
 
     def solve(self):
