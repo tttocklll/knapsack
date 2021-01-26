@@ -1,6 +1,7 @@
 from __future__ import annotations
 import numpy as np
 
+
 class Frog:
     def __init__(self, dimension, weight, value, capacity):
         self.dimension = dimension
@@ -35,12 +36,20 @@ class MDSFLA:
         self.value = value
         self.dimension = len(weight)
         # parameters
-        self.P = 200 # population size
-        self.m = 10 # number of memeplexes
-        self.iMax = 100 # number of iterations within each memeplex
-        self.p_m = 0.06 # genetic mutation probability
+        self.P = 200  # population size
+        self.m = 10  # number of memeplexes
+        self.iMax = 100  # number of iterations within each memeplex
+        self.p_m = 0.06  # genetic mutation probability
         # frogs
         self.frogs = np.array([])
+
+    def generate_frogs(self):
+        for i in range(self.P):
+            # evaluate the fitness of the frog
+            self.frogs = np.append(self.frogs, Frog(self.dimension, self.weight, self.value, self.capacity))
+
+    def local_search(self):
+        return
 
     def solve(self):
         # generate population of P frogs randomly
@@ -55,7 +64,7 @@ class MDSFLA:
                 cur_memeplexes[i % self.m].append((frog))
             cur_memeplexes = np.array(cur_memeplexes)
             # local search
-            # local_search(cur_memeplexes) # -> shuffled the m memeplexed
+            self.local_search(cur_memeplexes)  # -> shuffled the m memeplexed
             # apply mutation on the population
             for frog in self.frogs:
                 frog.mutation(self.p_m)
@@ -63,12 +72,6 @@ class MDSFLA:
         # determine the best solution
         self.frogs = sorted(self.frogs, key=lambda x: x.fitness, reverse=True)
         return self.frogs[0]
-
-    def generate_frogs(self):
-        for i in range(self.P):
-            # evaluate the fitness of the frog
-            self.frogs = np.append(self.frogs, Frog(self.dimension, self.weight, self.value, self.capacity))
-
 
 
 def main():
