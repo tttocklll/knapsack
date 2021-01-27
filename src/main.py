@@ -1,5 +1,6 @@
 from __future__ import annotations
 import numpy as np
+import copy
 
 
 class Frog:
@@ -39,7 +40,7 @@ class MDSFLA:
         self.P = 200  # population size
         self.m = 10  # number of memeplexes
         self.iMax = 100  # number of iterations within each memeplex
-        self.p_m = 0.06  # genetic mutation probability
+        self.p_m = 0  # genetic mutation probability
         # frogs
         self.frogs = np.array([])
 
@@ -49,7 +50,36 @@ class MDSFLA:
             self.frogs = np.append(self.frogs, Frog(self.dimension, self.weight, self.value, self.capacity))
 
     def local_search(self, memeplexes):
-        return
+        x_g = memeplexes[0][0]
+        for memeplex in memeplexes:
+            for it in range(self.iMax):
+                x_b = memeplex[0]
+                x_w = memeplex[-1]
+                x_w_new = copy.deepcopy(x_w)
+                # apply eqn. 2, 3 and 6
+                for i in range(self.dimension):
+                    D_i = np.random.rand() * (x_b.x[i] - x_w.x[i])
+                    t = 1 / (1 + np.exp(-D_i))
+                    u = np.random.rand()
+                    x_w_new.x[i] = 0 if t <= u else 1
+                x_w_new.fitness = x_w_new.calc_fitness()
+                if x_w_new.fitness > x_w.fitness:
+                    memeplex[-1] = x_w_new
+                    continue
+                # apply eqn. 2, 3 and 6 with replacing x_b with x_g
+                for i in range(self.dimension):
+                    D_i = np.random.rand() * (x_g.x[i] - x_w.x[i])
+                    t = 1 / (1 + np.exp(-D_i))
+                    u = np.random.rand()
+                    x_w_new.x[i] = 0 if t <= u else 1
+                x_w_new.fitness = x_w_new.calc_fitness()
+                if x_w_new.fitness > x_w.fitness:
+                    memeplex[-1] = x_w_new
+                    continue
+                x_w_new.x = x_w_new.generate_x()
+                x_w_new.fitness = x_w_new.calc_fitness()
+                memeplex[-1] = x_w_new
+        return memeplexes
 
     def solve(self):
         # generate population of P frogs randomly
@@ -64,7 +94,8 @@ class MDSFLA:
                 cur_memeplexes[i % self.m].append((frog))
             cur_memeplexes = np.array(cur_memeplexes)
             # local search
-            self.local_search(cur_memeplexes)  # -> shuffled the m memeplexed
+            cur_memeplexes = self.local_search(cur_memeplexes)  # -> shuffled the m memeplexed
+            self.frogs = cur_memeplexes.flatten()
             # apply mutation on the population
             for frog in self.frogs:
                 frog.mutation(self.p_m)
