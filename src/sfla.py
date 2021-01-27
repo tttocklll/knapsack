@@ -5,31 +5,27 @@ import tqdm
 
 
 class Frog:
-    def __init__(self, dimension: int, weight: list[int], value: list[int], capacity: int):
+    def __init__(self, dimension: int):
         self.dimension = dimension
-        self.weight = weight
-        self.value = value
-        self.capacity = capacity
         self.x = self.generate_x()
         self.fitness = 0
 
     def generate_x(self):
         return np.random.randint(0, 2, self.dimension)
 
-    def calc_fitness(self):
+    def calc_fitness(self, capacity: int, weight: list[int], value: list[int]):
         cur_weight = 0
         cur_value = 0
         for i in range(self.dimension):
             if self.x[i]:
-                cur_weight += self.weight[i]
-                cur_value += self.value[i]
-        self.fitness = cur_value if cur_weight <= self.capacity else 0
+                cur_weight += weight[i]
+                cur_value += value[i]
+        self.fitness = cur_value if cur_weight <= capacity else 0
 
-    def mutation(self, p_m):
+    def mutation(self, p_m: float):
         for i in range(self.dimension):
             if np.random.rand() < p_m:
                 self.x[i] = (self.x[i] + 1) % 2
-        self.calc_fitness()
 
 
 class MDSFLA:
@@ -50,7 +46,9 @@ class MDSFLA:
     def generate_frogs(self):
         for i in range(self.P):
             # evaluate the fitness of the frog
-            self.frogs = np.append(self.frogs, Frog(self.dimension, self.weight, self.value, self.capacity))
+            new_frog = Frog(self.dimension)
+            new_frog.calc_fitness(self.capacity, self.weight, self.value)
+            self.frogs = np.append(self.frogs, new_frog)
         self.best_frog = self.frogs[0]
 
     def local_search(self, memeplexes):
@@ -67,7 +65,7 @@ class MDSFLA:
                     t = 1 / (1 + np.exp(-D_i))
                     u = np.random.rand()
                     x_w_new.x[i] = 0 if t <= u else 1
-                x_w_new.calc_fitness()
+                x_w_new.calc_fitness(self.capacity, self.weight, self.value)
                 if x_w_new.fitness > x_w.fitness:
                     memeplex[-1] = x_w_new
                     if x_w_new.fitness > x_g.fitness:
@@ -79,7 +77,7 @@ class MDSFLA:
                     t = 1 / (1 + np.exp(-D_i))
                     u = np.random.rand()
                     x_w_new.x[i] = 0 if t <= u else 1
-                x_w_new.calc_fitness()
+                x_w_new.calc_fitness(self.capacity, self.weight, self.value)
 
                 if x_w_new.fitness > x_w.fitness:
                     memeplex[-1] = x_w_new
@@ -87,7 +85,7 @@ class MDSFLA:
                         x_g = x_w_new
                     continue
                 x_w_new.x = x_w_new.generate_x()
-                x_w_new.calc_fitness()
+                x_w_new.calc_fitness(self.capacity, self.weight, self.value)
                 memeplex[-1] = x_w_new
                 if x_w_new.fitness > x_g.fitness:
                     x_g = x_w_new
@@ -114,6 +112,7 @@ class MDSFLA:
             # apply mutation on the population
             for frog in self.frogs:
                 frog.mutation(self.p_m)
+                frog.calc_fitness(self.capacity, self.weight, self.value)
                 if frog.fitness > self.best_frog.fitness:
                     self.best_frog = frog
 
