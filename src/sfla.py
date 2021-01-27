@@ -11,7 +11,7 @@ class Frog:
         self.value = value
         self.capacity = capacity
         self.x = self.generate_x()
-        self.fitness = self.calc_fitness()
+        self.fitness = 0
 
     def generate_x(self):
         return np.random.randint(0, 2, self.dimension)
@@ -23,13 +23,13 @@ class Frog:
             if self.x[i]:
                 cur_weight += self.weight[i]
                 cur_value += self.value[i]
-        return cur_value if cur_weight <= self.capacity else 0
+        self.fitness = cur_value if cur_weight <= self.capacity else 0
 
     def mutation(self, p_m):
         for i in range(self.dimension):
             if np.random.rand() < p_m:
                 self.x[i] = (self.x[i] + 1) % 2
-        self.fitness = self.calc_fitness()
+        self.calc_fitness()
 
 
 class MDSFLA:
@@ -67,7 +67,7 @@ class MDSFLA:
                     t = 1 / (1 + np.exp(-D_i))
                     u = np.random.rand()
                     x_w_new.x[i] = 0 if t <= u else 1
-                x_w_new.fitness = x_w_new.calc_fitness()
+                x_w_new.calc_fitness()
                 if x_w_new.fitness > x_w.fitness:
                     memeplex[-1] = x_w_new
                     if x_w_new.fitness > x_g.fitness:
@@ -79,7 +79,7 @@ class MDSFLA:
                     t = 1 / (1 + np.exp(-D_i))
                     u = np.random.rand()
                     x_w_new.x[i] = 0 if t <= u else 1
-                x_w_new.fitness = x_w_new.calc_fitness()
+                x_w_new.calc_fitness()
 
                 if x_w_new.fitness > x_w.fitness:
                     memeplex[-1] = x_w_new
@@ -87,7 +87,7 @@ class MDSFLA:
                         x_g = x_w_new
                     continue
                 x_w_new.x = x_w_new.generate_x()
-                x_w_new.fitness = x_w_new.calc_fitness()
+                x_w_new.calc_fitness()
                 memeplex[-1] = x_w_new
                 if x_w_new.fitness > x_g.fitness:
                     x_g = x_w_new
@@ -123,7 +123,7 @@ class MDSFLA:
 
 
 def main():
-    problem = "p08"
+    problem = "p07"
     # read problem files
     f = open(f"../problem/{problem}/{problem}_c.txt", "r")
     data = f.read()
@@ -141,22 +141,15 @@ def main():
     # solve
     sfla = MDSFLA(capacity, weight, value)
     result = sfla.solve()
-    print(result.x, all(result.x == ans), result.fitness)
-    w = 0
-    v = 0
-    for j in range(len(result.x)):
-        if result.x[j]:
-            w += weight[j]
-            v += value[j]
-    print(w, v)
+    print(f"solved: {all(result.x == ans)}")
+    print(f"result:   x = {result.x.tolist()}, value = {result.fitness}")
     w = 0
     v = 0
     for j in range(len(ans)):
         if ans[j]:
             w += weight[j]
             v += value[j]
-    print(w, v)
-
+    print(f"expected: x = {ans}, value = {v}")
 
 
 if __name__ == "__main__":
