@@ -5,7 +5,7 @@ import tqdm
 
 
 class Frog:
-    def __init__(self, dimension, weight, value, capacity):
+    def __init__(self, dimension: int, weight: list[int], value: list[int], capacity: int):
         self.dimension = dimension
         self.weight = weight
         self.value = value
@@ -95,7 +95,7 @@ class MDSFLA:
             self.best_frog = x_g
         return memeplexes
 
-    def solve(self):
+    def solve(self) -> Frog:
         # generate population of P frogs randomly
         self.generate_frogs()
 
