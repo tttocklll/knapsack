@@ -2,6 +2,7 @@ from __future__ import annotations
 import numpy as np
 import copy
 import tqdm
+epsilon = 1e-10  # to avoid 0-division error
 
 
 class Firework:
@@ -24,6 +25,7 @@ class Firework:
 
 
 class BFWA:
+
     def __init__(self, capacity: int, weight: list[int], value: list[int]):
         self.capacity = capacity
         self.weight = weight
@@ -33,8 +35,104 @@ class BFWA:
         self.n = 2 * self.D  # number of fireworks
         self.T_max = 4 * self.D  # max of iterations
         self.A_c = self.D  # max explosion amplitude
-        # for result
-        self.best_firework = None
+        self.N_m = self.D // 2  # number of mutation explosion
+        # firework
+        self.fireworks = []
+        self.best_firework: Firework = None
+        self.worst_firework: Firework = None
+
+    def generate_fireworks(self):
+        for _ in range(self.n):
+            new_firework = Firework(self.D)
+            new_firework.calc_gorgeous_degree(self.capacity, self.weight, self.value)
+            self.fireworks.append(new_firework)
+            if self.best_firework is None:
+                self.best_firework = new_firework
+                self.worst_firework = new_firework
+            else:
+                self.best_firework = self.best_firework if self.best_firework.gorgeous_degree > new_firework.gorgeous_degree else new_firework
+                self.worst_firework = self.best_firework if self.best_firework.gorgeous_degree < new_firework.gorgeous_degree else new_firework
+
+    def calc_number_of_sparks(self) -> list[int]:
+        def inner(i: int):  # calc f(I_i(x)) - y_min + epsilon
+            return self.fireworks[i].gorgeous_degree - self.worst_firework.gorgeous_degree + epsilon
+
+        def calc_each_N_i(i: int, total_inner: float):
+            return round(self.n * inner(i) / total_inner)
+
+        total_inner = 0
+        for i in range(self.n):
+            total_inner += inner(i)
+
+        # calc each N_i
+        N_max = 10  # should be examined
+        N_i = []
+        for i in range(self.n):
+            N_cur = calc_each_N_i(i, total_inner)
+            N_i.append(1 if N_cur < 1 else N_max if N_cur > N_max else N_cur)
+        return N_i
+
+    def calc_fireworks_step(self) -> list[int]:
+        def inner(i: int):
+            return self.best_firework.gorgeous_degree - self.fireworks[i].gorgeous_degree + epsilon
+
+        def calc_each_A_i(i: int, total_inner: float):
+            A_min = 1
+            return A_min + np.floor(self.A_c * inner(i) / total_inner)
+
+        def calc_each_Step_ie(A_i: int):
+            return 1 if A_i <= 1 else self.A_c if A_i > self.A_c else np.random.randint(1, A_i + 1)
+
+        total_inner = 0
+        for i in range(self.n):
+            total_inner += inner(i)
+
+        A_i = [calc_each_A_i(i, total_inner) for i in range(self.n)]
+        Step_ie = [calc_each_Step_ie(A_i[i]) for i in range(self.n)]
+        return Step_ie
+
+    def explosion_operator(self, I: Firework, S: list[int], r: int) -> Firework:
+        spark = copy.deepcopy(I)
+        inv_idx = np.random.choice(S, r, replace=False)
+        for i in inv_idx:
+            spark.x[i] = (spark.x[i] + 1) % 2
+        spark.calc_gorgeous_degree(self.capacity, self.weight, self.value)
+        return spark
+
+    def calc_mutation_space(self) -> list:
+        M_im_list = []
+        for firework in self.fireworks:
+            M_im_list.append(np.where(firework.x == self.best_firework.x)[0])
+        return M_im_list
+
+    def calc_mutation_step(self) -> list[int]:
+        def inner(i: int):
+            return self.fireworks[i].gorgeous_degree - self.worst_firework.gorgeous_degree + epsilon
+
+        def calc_each_A_i(i: int, total_inner: float):
+            A_min = 1
+            return A_min + np.floor(self.A_c * inner(i) / total_inner)
+
+        def calc_each_Step_im(A_i: int):
+            return 1 if A_i <= 1 else self.A_c if A_i > self.A_c else np.random.randint(1, A_i + 1)
+
+        total_inner = 0
+        for i in range(self.n):
+            total_inner += inner(i)
+
+        A_i = [calc_each_A_i(i, total_inner) for i in range(self.n)]
+        Step_im = [calc_each_Step_im(A_i[i]) for i in range(self.n)]
+        return Step_im
+
+    def select_next_gen(self):
+        # keep best firework spot
+        self.fireworks.sort(key=lambda x: x.gorgeous_degree)
+        self.best_firework = self.fireworks[-1]
+        self.fireworks.pop()
+
+        # temp
+        self.fireworks = self.fireworks[-self.n+1:]
+        self.fireworks.append(self.best_firework)
 
     def solve(self) -> Firework:
         # initialize items of fireworks I(x) and its gorgeous degree f(I(x))
@@ -42,17 +140,25 @@ class BFWA:
 
         for _ in tqdm.tqdm(range(self.T_max)):
             # determine number of sparks N_i
-            self.calc_number_of_sparks()
+            N_i_list = self.calc_number_of_sparks()
             # determine fireworks explosion step Step_ie
-            self.calc_fireworks_step()
+            Step_ie_list = self.calc_fireworks_step()
             # carry out fireworks explosion
-            self.fireworks_explosion()
+            M_0 = [i for i in range(self.D)]
+            sparks = []
+            for i, firework in enumerate(self.fireworks):
+                for p in range(N_i_list[i]):
+                    sparks.append(self.explosion_operator(firework, M_0, Step_ie_list[i]))
             # determine mutation space of fireworks M_im
-            self.calc_mutation_space()
+            M_im_list = self.calc_mutation_space()
             # determine mutation explosion step Step_im
-            self.calc_mutation_step()
+            Step_im_list = self.calc_mutation_step()
             # carry out mutation explosion
-            self.mutation_explosion()
+            mutation_sparks = []
+            for i, firework in enumerate(self.fireworks):
+                for j in range(self.N_m):
+                    mutation_sparks.append(self.explosion_operator(firework, M_im_list, Step_im_list[i]))
+            self.fireworks += sparks + mutation_sparks
             # calculate gorgeous degree and select explosion location
             self.select_next_gen()
 
