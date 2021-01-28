@@ -2,6 +2,7 @@ from __future__ import annotations
 import numpy as np
 import copy
 import tqdm
+from random import sample
 epsilon = 1e-10  # to avoid 0-division error
 
 
@@ -93,7 +94,7 @@ class BFWA:
 
     def explosion_operator(self, I: Firework, S: list[int], r: int) -> Firework:
         spark = copy.deepcopy(I)
-        inv_idx = np.random.choice(S, r, replace=False)
+        inv_idx = sample(S, r)
         for i in inv_idx:
             spark.x[i] = (spark.x[i] + 1) % 2
         spark.calc_gorgeous_degree(self.capacity, self.weight, self.value)
@@ -102,7 +103,7 @@ class BFWA:
     def calc_mutation_space(self) -> list:
         M_im_list = []
         for firework in self.fireworks:
-            M_im_list.append(np.where(firework.x == self.best_firework.x)[0][0])
+            M_im_list.append(np.where(firework.x == self.best_firework.x)[0].tolist())
         return M_im_list
 
     def calc_mutation_step(self) -> list[int]:
