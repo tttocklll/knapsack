@@ -65,7 +65,7 @@ class BFWA:
             total_inner += inner(i)
 
         # calc each N_i
-        N_max = 10  # should be examined
+        N_max = 10  # max number of spark
         N_i = []
         for i in range(self.n):
             N_cur = calc_each_N_i(i, total_inner)
@@ -102,7 +102,7 @@ class BFWA:
     def calc_mutation_space(self) -> list:
         M_im_list = []
         for firework in self.fireworks:
-            M_im_list.append(np.where(firework.x == self.best_firework.x)[0])
+            M_im_list.append(np.where(firework.x == self.best_firework.x)[0][0])
         return M_im_list
 
     def calc_mutation_step(self) -> list[int]:
@@ -124,15 +124,34 @@ class BFWA:
         Step_im = [calc_each_Step_im(A_i[i]) for i in range(self.n)]
         return Step_im
 
+    def distance(self, I_i: Firework, I_j: Firework):
+        return np.sum(I_i.x != I_j.x)
+
     def select_next_gen(self):
+        def calc_p(i: int, sum_dist):
+            cur_sum = 0
+            for j in range(len(self.fireworks)):
+                cur_sum += self.distance(self.fireworks[i], self.fireworks[j])
+            return cur_sum / sum_dist
+
         # keep best firework spot
         self.fireworks.sort(key=lambda x: x.gorgeous_degree)
         self.best_firework = self.fireworks[-1]
         self.fireworks.pop()
 
-        # temp
-        self.fireworks = self.fireworks[-self.n+1:]
-        self.fireworks.append(self.best_firework)
+        # calculate probability of whether I_i should be in next gen
+        sum_dist = 0
+        for i in range(len(self.fireworks)):
+            for j in range(len(self.fireworks)):
+                sum_dist += self.distance(self.fireworks[i], self.fireworks[j])
+        p_list = []
+        for i in range(len(self.fireworks)):
+            p_list.append([calc_p(i, sum_dist), self.fireworks[i]])
+        p_list.sort(key=lambda x: x[0])
+        p_list = np.array(p_list)
+        self.fireworks = p_list[-self.n+1:][:, 1].tolist() + [self.best_firework]
+        self.fireworks.sort(key=lambda x: x.gorgeous_degree)
+        self.worst_firework = self.fireworks[0]
 
     def solve(self) -> Firework:
         # initialize items of fireworks I(x) and its gorgeous degree f(I(x))
@@ -166,7 +185,7 @@ class BFWA:
 
 
 def main():
-    problem = "p07"
+    problem = "p08"
     # read problem files
     f = open(f"../problem/{problem}/{problem}_c.txt", "r")
     data = f.read()
