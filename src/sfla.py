@@ -2,6 +2,7 @@ from __future__ import annotations
 import numpy as np
 import copy
 import tqdm
+method = 3
 
 
 class Frog:
@@ -49,36 +50,42 @@ class MDSFLA:
             new_frog = Frog(self.dimension)
             new_frog.calc_fitness(self.capacity, self.weight, self.value)
             self.frogs = np.append(self.frogs, new_frog)
-        self.best_frog = self.frogs[0]
+        self.best_frog = copy.deepcopy(self.frogs[0])
+
+    def create_x_w_new(self, x_b, x_w):
+        x_w_new = copy.deepcopy(x_w)
+        for i in range(self.dimension):
+            D_i = np.random.rand() * (x_b.x[i] - x_w.x[i])
+            if method == 1:
+                t = x_w.x[i] + D_i
+                x_w_new.x[i] = 0 if t <= 0 else 1 if t >= 1 else round(t)
+            elif method == 2:
+                t = 1 / (1 + np.exp(-D_i))
+                u = np.random.rand()
+                x_w_new.x[i] = 0 if t <= u else 1
+            else:
+                t = 1 / (1 + np.exp(-D_i))
+                alpha = 0.4
+                x_w_new.x[i] = 0 if t <= alpha else 1 if t >= (1 + alpha) / 2 else x_w.x[i]
+        x_w_new.calc_fitness(self.capacity, self.weight, self.value)
+        return x_w_new
 
     def local_search(self, memeplexes):
-        x_g = memeplexes[0][0]
+        x_g = copy.deepcopy(self.best_frog)
         for memeplex in memeplexes:
             for it in range(self.iMax):
                 memeplex = sorted(memeplex, key=lambda x: x.fitness, reverse=True)
                 x_b = memeplex[0]
                 x_w = memeplex[-1]
-                x_w_new = copy.deepcopy(x_w)
                 # apply eqn. 2, 3 and 6
-                for i in range(self.dimension):
-                    D_i = np.random.rand() * (x_b.x[i] - x_w.x[i])
-                    t = 1 / (1 + np.exp(-D_i))
-                    u = np.random.rand()
-                    x_w_new.x[i] = 0 if t <= u else 1
-                x_w_new.calc_fitness(self.capacity, self.weight, self.value)
+                x_w_new = self.create_x_w_new(x_b, x_w)
                 if x_w_new.fitness > x_w.fitness:
                     memeplex[-1] = x_w_new
                     if x_w_new.fitness > x_g.fitness:
                         x_g = x_w_new
                     continue
                 # apply eqn. 2, 3 and 6 with replacing x_b with x_g
-                for i in range(self.dimension):
-                    D_i = np.random.rand() * (x_g.x[i] - x_w.x[i])
-                    t = 1 / (1 + np.exp(-D_i))
-                    u = np.random.rand()
-                    x_w_new.x[i] = 0 if t <= u else 1
-                x_w_new.calc_fitness(self.capacity, self.weight, self.value)
-
+                x_w_new = self.create_x_w_new(x_g, x_w)
                 if x_w_new.fitness > x_w.fitness:
                     memeplex[-1] = x_w_new
                     if x_w_new.fitness > x_g.fitness:
@@ -90,14 +97,16 @@ class MDSFLA:
                 if x_w_new.fitness > x_g.fitness:
                     x_g = x_w_new
         if x_g.fitness > self.best_frog.fitness:
-            self.best_frog = x_g
+            self.best_frog = copy.deepcopy(x_g)
         return memeplexes
 
     def solve(self) -> Frog:
         # generate population of P frogs randomly
         self.generate_frogs()
 
+        delta = 0  # for termination condition
         for _ in tqdm.tqdm(range(self.iMax)):
+            former_best = copy.deepcopy(self.best_frog)
             # sort P frogs in descending order
             self.frogs = sorted(self.frogs, key=lambda x: x.fitness, reverse=True)
             # partition P frogs into m memeplexes
@@ -114,7 +123,11 @@ class MDSFLA:
                 frog.mutation(self.p_m)
                 frog.calc_fitness(self.capacity, self.weight, self.value)
                 if frog.fitness > self.best_frog.fitness:
-                    self.best_frog = frog
+                    self.best_frog = copy.deepcopy(frog)
+            if former_best == self.best_frog:
+                delta += 1
+            if delta >= self.iMax // 10:
+                break
 
         # determine the best solution
         self.frogs = sorted(self.frogs, key=lambda x: x.fitness, reverse=True)
@@ -122,7 +135,7 @@ class MDSFLA:
 
 
 def main():
-    problem = "p07"
+    problem = "p08"
     # read problem files
     f = open(f"../problem/{problem}/{problem}_c.txt", "r")
     data = f.read()
