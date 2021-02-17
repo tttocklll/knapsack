@@ -10,6 +10,6 @@
 - Kaushik Kumar Bhattacharjee, S.P. Sarmah, "Shuffled frog leaping algorithm and its application to 0/1 knapsack problem," Applied Soft Computing, Volume 19, 2014, pp. 252-263, ISSN 1568-4946, https://doi.org/10.1016/j.asoc.2014.02.010.
 
 ## Benchmarks
-(in `./problems`)
+(in `./problem`)
 
 https://people.sc.fsu.edu/~jburkardt/datasets/knapsack_01/knapsack_01.html
